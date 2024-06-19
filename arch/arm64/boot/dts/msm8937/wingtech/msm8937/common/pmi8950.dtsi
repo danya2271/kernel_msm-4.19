@@ -1,8 +1,0 @@
-&pmi8950_torch0 {
-	qcom,current = <100>;
-};
-
-&pmi8950_torch1 {
-	qcom,current = <100>;
-	qcom,led-name = "flashlight";
-};

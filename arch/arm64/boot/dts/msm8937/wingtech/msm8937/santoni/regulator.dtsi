@@ -1,7 +1,0 @@
-&apc_vreg_corner {
-	/delete-property/ qcom,cpr-enable;
-};
-
-&pm8937_s5 {
-	qcom,mode = "pwm";
-};

@@ -1,9 +1,0 @@
-&spmi_bus {
-	qcom,pm8937@0 {
-		qcom,power-on@800 {
-			qcom,pon_1 {
-				qcom,s1-timer = <4480>;
-			};
-		};
-	};
-};

@@ -1,5 +1,0 @@
-&soc {
-	fpc1020 {
-		status = "disabled";
-	};
-};
