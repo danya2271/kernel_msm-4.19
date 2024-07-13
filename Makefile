@@ -717,6 +717,7 @@ KBUILD_CFLAGS   += -mllvm -regalloc-enable-advisor=release
 KBUILD_LDFLAGS  += -mllvm -regalloc-enable-advisor=release
 # Enable hot cold split optimization
 KBUILD_CFLAGS   += -mllvm -hot-cold-split=true
+KBUILD_LDFLAGS  += -mllvm -enable-ml-inliner=release
 endif
 ifeq ($(cc-name),clang)
 # Additional optimizations for better kernel speed
