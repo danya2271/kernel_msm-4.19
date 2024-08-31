@@ -21,6 +21,8 @@
 #define PREMATURE_CNT_LOW 1
 #define PREMATURE_CNT_HIGH 5
 
+extern bool sleep_disabled;
+
 struct power_params {
 	uint32_t entry_latency;		/* Entry latency */
 	uint32_t exit_latency;		/* Exit latency */

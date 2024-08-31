@@ -14,6 +14,7 @@
 #include <linux/slab.h>
 #include <linux/version.h>
 #include <drm/drm_panel.h>
+#include "../cpuidle/lpm-levels.h"
 
 /* The sched_param struct is located elsewhere in newer kernels */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
@@ -273,6 +274,7 @@ static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 
 	/* Unboost when the screen is off */
 	if (test_bit(SCREEN_OFF, &b->state)) {
+		sleep_disabled = false;
 		policy->min = get_idle_freq(policy);
 		policy->max = get_idle_freq(policy);
 		return NOTIFY_OK;
@@ -280,6 +282,7 @@ static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 
 	/* Boost CPU to max frequency for max boost */
 	if (test_bit(MAX_BOOST, &b->state)) {
+		sleep_disabled = true;
 		policy->min = get_max_boost_freq(policy);
 		return NOTIFY_OK;
 	}
@@ -288,10 +291,13 @@ static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 	 * Boost to policy->max if the boost frequency is higher. When
 	 * unboosting, set policy->min to the absolute min freq for the CPU.
 	 */
-	if (test_bit(INPUT_BOOST, &b->state))
+	if (test_bit(INPUT_BOOST, &b->state)) {
 		policy->min = get_input_boost_freq(policy);
-	else
-		policy->min = get_min_freq(policy);
+		sleep_disabled = true;
+	} else {
+		policy->min =get_min_freq(policy);
+		sleep_disabled = false;
+	}
 
 	return NOTIFY_OK;
 }
