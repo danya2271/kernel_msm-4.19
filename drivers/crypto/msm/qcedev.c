@@ -79,13 +79,13 @@ static dev_t qcedev_device_no;
 static struct class *driver_class;
 static struct device *class_dev;
 
-MODULE_DEVICE_TABLE(of, qcedev_match);
-
 static const struct of_device_id qcedev_match[] = {
 	{	.compatible = "qcom,qcedev"},
 	{	.compatible = "qcom,qcedev,context-bank"},
 	{}
 };
+
+MODULE_DEVICE_TABLE(of, qcedev_match);
 
 static uint32_t qcedev_get_block_size(enum qcedev_sha_alg_enum alg)
 {
@@ -1875,6 +1875,7 @@ static inline long qcedev_ioctl(struct file *file,
 			err = -ENOTTY;
 			goto exit_free_qcedev_areq;
 		}
+		/* Fall-through */
 	case QCEDEV_IOCTL_SHA_UPDATE_REQ:
 		{
 		struct scatterlist sg_src;
@@ -1925,9 +1926,10 @@ static inline long qcedev_ioctl(struct file *file,
 				handle->sha_ctxt.diglen);
 		mutex_unlock(&hash_access_lock);
 		if (copy_to_user((void __user *)arg, &qcedev_areq->sha_op_req,
-					sizeof(struct qcedev_sha_op_req)))
+					sizeof(struct qcedev_sha_op_req))) {
 			err = -EFAULT;
 			goto exit_free_qcedev_areq;
+		}
 		}
 		break;
 
@@ -2017,9 +2019,10 @@ static inline long qcedev_ioctl(struct file *file,
 				handle->sha_ctxt.diglen);
 		mutex_unlock(&hash_access_lock);
 		if (copy_to_user((void __user *)arg, &qcedev_areq->sha_op_req,
-					sizeof(struct qcedev_sha_op_req)))
+					sizeof(struct qcedev_sha_op_req))) {
 			err = -EFAULT;
 			goto exit_free_qcedev_areq;
+		}
 		}
 		break;
 

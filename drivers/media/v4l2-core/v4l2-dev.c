@@ -829,6 +829,26 @@ static int video_register_media_controller(struct video_device *vdev)
 	return 0;
 }
 
+#define RESERVE_NR_IN_VFL_TYPE_GRABBER
+#ifdef RESERVE_NR_IN_VFL_TYPE_GRABBER
+static bool is_grabber_nr_reserved(int nr)
+{
+	switch (nr) {
+		case 0: // msm-config vdev
+		case 1: // msm-sensor vdev
+		case 2: // msm-sensor vdev
+		case 3: // msm-sensor vdev
+		case 32: // msm_vidc_v4l2 dev
+		case 33: // msm_vidc_v4l2 dev
+			return true;
+			break;
+		default:
+			break;
+	}
+	return false;
+}
+#endif
+
 int __video_register_device(struct video_device *vdev,
 			    enum vfl_devnode_type type,
 			    int nr, int warn_if_nr_in_use,
@@ -922,9 +942,40 @@ int __video_register_device(struct video_device *vdev,
 
 	/* Pick a device node number */
 	mutex_lock(&videodev_lock);
+#ifdef RESERVE_NR_IN_VFL_TYPE_GRABBER
+	if (type == VFL_TYPE_GRABBER) {
+		if (vdev->v4l2_dev->dev && strcmp(vdev->v4l2_dev->dev->driver->name, "msm_vidc_v4l2") == 0)
+			pr_debug("%s: Allow msm_vidc_v4l2 driver registering to /dev/video%d", __func__, nr);
+		else if (strcmp(vdev->name, "msm-config") == 0)
+			pr_debug("%s: Allow msm-config vdev registering to /dev/video%d", __func__, nr);
+		else if (strcmp(vdev->name, "msm-sensor") == 0)
+			pr_debug("%s: Allow msm-sensor vdev registering to /dev/video%d", __func__, nr);
+		else {
+			if (nr == -1 || is_grabber_nr_reserved(nr)) {
+				for (i = 0; i < minor_cnt; i++) {
+					if (is_grabber_nr_reserved(i))
+						continue;
+
+					nr = devnode_find(vdev, i, minor_cnt);
+					if (is_grabber_nr_reserved(nr))
+						continue;
+					else if (nr == minor_cnt)
+						goto nr_final_check;
+					else
+						break;
+				}
+				pr_debug("%s: vdev %s will register to /dev/video%d instead", __func__, vdev->name, nr);
+				goto nr_final_check;
+			}
+		}
+	}
+#endif
 	nr = devnode_find(vdev, nr == -1 ? 0 : nr, minor_cnt);
 	if (nr == minor_cnt)
 		nr = devnode_find(vdev, 0, minor_cnt);
+#ifdef RESERVE_NR_IN_VFL_TYPE_GRABBER
+nr_final_check:
+#endif
 	if (nr == minor_cnt) {
 		pr_err("could not get a free device node number\n");
 		mutex_unlock(&videodev_lock);
@@ -983,8 +1034,10 @@ int __video_register_device(struct video_device *vdev,
 	vdev->dev.devt = MKDEV(VIDEO_MAJOR, vdev->minor);
 	vdev->dev.parent = vdev->dev_parent;
 	dev_set_name(&vdev->dev, "%s%d", name_base, vdev->num);
+	mutex_lock(&videodev_lock);
 	ret = device_register(&vdev->dev);
 	if (ret < 0) {
+		mutex_unlock(&videodev_lock);
 		pr_err("%s: device_register failed\n", __func__);
 		goto cleanup;
 	}
@@ -1004,6 +1057,7 @@ int __video_register_device(struct video_device *vdev,
 
 	/* Part 6: Activate this minor. The char device can now be used. */
 	set_bit(V4L2_FL_REGISTERED, &vdev->flags);
+	mutex_unlock(&videodev_lock);
 
 	return 0;
 
