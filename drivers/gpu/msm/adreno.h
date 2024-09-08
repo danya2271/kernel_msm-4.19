@@ -806,11 +806,11 @@ struct adreno_coresight_attr {
 	struct adreno_coresight_register *reg;
 };
 
-ssize_t adreno_coresight_show_register(struct device *device,
-		struct device_attribute *attr, char *buf);
+static ssize_t adreno_coresight_show_register(struct device *device,
+		struct device_attribute *attr, char *buf) {return 0;}
 
-ssize_t adreno_coresight_store_register(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size);
+static ssize_t adreno_coresight_store_register(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size) {return 0;}
 
 #define ADRENO_CORESIGHT_ATTR(_attrname, _reg) \
 	struct adreno_coresight_attr coresight_attr_##_attrname  = { \
@@ -1050,9 +1050,9 @@ extern unsigned int *adreno_ft_regs;
 extern unsigned int adreno_ft_regs_num;
 extern unsigned int *adreno_ft_regs_val;
 
-extern struct adreno_gpudev adreno_a3xx_gpudev;
+static struct adreno_gpudev adreno_a3xx_gpudev;
 extern struct adreno_gpudev adreno_a5xx_gpudev;
-extern struct adreno_gpudev adreno_a6xx_gpudev;
+static struct adreno_gpudev adreno_a6xx_gpudev;
 
 extern int adreno_wake_nice;
 extern unsigned int adreno_wake_timeout;
@@ -1089,12 +1089,12 @@ void adreno_fault_skipcmd_detached(struct adreno_device *adreno_dev,
 					 struct adreno_context *drawctxt,
 					 struct kgsl_drawobj *drawobj);
 
-int adreno_coresight_init(struct adreno_device *adreno_dev);
+static inline int adreno_coresight_init(struct adreno_device *adreno_dev) {return 0;}
 
-void adreno_coresight_start(struct adreno_device *adreno_dev);
-void adreno_coresight_stop(struct adreno_device *adreno_dev);
+static inline void adreno_coresight_start(struct adreno_device *adreno_dev) {}
+static inline void adreno_coresight_stop(struct adreno_device *adreno_dev) {}
 
-void adreno_coresight_remove(struct adreno_device *adreno_dev);
+static inline void adreno_coresight_remove(struct adreno_device *adreno_dev) {}
 
 bool adreno_hw_isidle(struct adreno_device *adreno_dev);
 

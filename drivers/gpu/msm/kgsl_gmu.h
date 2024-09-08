@@ -79,7 +79,7 @@ struct gmu_block_header {
 /* GMU memdesc entries */
 #define GMU_KERNEL_ENTRIES		16
 
-extern struct gmu_dev_ops adreno_a6xx_gmudev;
+static struct gmu_dev_ops adreno_a6xx_gmudev;
 #define KGSL_GMU_DEVICE(_a)  ((struct gmu_device *)((_a)->gmu_core.ptr))
 
 enum gmu_mem_type {

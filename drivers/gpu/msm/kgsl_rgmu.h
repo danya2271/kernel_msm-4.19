@@ -56,9 +56,9 @@ struct rgmu_device {
 	unsigned int fault_count;
 };
 
-extern struct gmu_dev_ops adreno_a6xx_rgmudev;
+static struct gmu_dev_ops adreno_a6xx_rgmudev;
 #define KGSL_RGMU_DEVICE(_a)  ((struct rgmu_device *)((_a)->gmu_core.ptr))
 
-irqreturn_t rgmu_irq_handler(int irq, void *data);
-irqreturn_t oob_irq_handler(int irq, void *data);
+static irqreturn_t rgmu_irq_handler(int irq, void *data) {return 0;}
+static irqreturn_t oob_irq_handler(int irq, void *data) {return 0;}
 #endif /* __KGSL_RGMU_H */
