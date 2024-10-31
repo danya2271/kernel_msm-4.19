@@ -120,6 +120,14 @@ int __weak arch_asym_cpu_priority(int cpu)
 }
 
 #define capacity_greater(cap1, cap2) ((cap1) * 1024 > (cap2) * 1078)
+
+/*
+ * The margin used when comparing utilization with CPU capacity.
+ *
+ * (default: ~20%)
+ */
+#define fits_capacity(cap, max)	((cap) * 1280 < (max) * 1024)
+
 #endif
 
 #ifdef CONFIG_CFS_BANDWIDTH
@@ -4402,7 +4410,6 @@ struct find_best_target_env {
 	int need_idle;
 	int fastpath;
 	int start_cpu;
-	int skip_cpu;
 	bool is_rtg;
 	bool boosted;
 	bool strict_max;
@@ -6115,14 +6122,11 @@ static void record_wakee(struct task_struct *p)
  * whatever is irrelevant, spread criteria is apparent partner count exceeds
  * socket size.
  */
-static int wake_wide(struct task_struct *p, int sibling_count_hint)
+static int wake_wide(struct task_struct *p)
 {
 	unsigned int master = current->wakee_flips;
 	unsigned int slave = p->wakee_flips;
 	int llc_size = this_cpu_read(sd_llc_size);
-
-	if (sibling_count_hint >= llc_size)
-		return 1;
 
 	if (master < slave)
 		swap(master, slave);
@@ -6801,11 +6805,6 @@ static inline bool task_skip_min_cpu(struct task_struct *p)
 		get_rtg_status(p) && p->unfilter;
 }
 
-static inline bool is_many_wakeup(int sibling_count_hint)
-{
-	return sibling_count_hint >= sysctl_sched_many_wakeup_threshold;
-}
-
 #else
 static inline bool get_rtg_status(struct task_struct *p)
 {
@@ -6817,10 +6816,6 @@ static inline bool task_skip_min_cpu(struct task_struct *p)
 	return false;
 }
 
-static inline bool is_many_wakeup(int sibling_count_hint)
-{
-	return false;
-}
 #endif
 
 static int get_start_cpu(struct task_struct *p)
@@ -6963,9 +6958,6 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 				continue;
 
 			if (sched_cpu_high_irqload(i))
-				continue;
-
-			if (fbt_env->skip_cpu == i)
 				continue;
 
 			/*
@@ -7731,7 +7723,7 @@ static DEFINE_PER_CPU(cpumask_t, energy_cpus);
  */
 
 static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
-				     int sync, int sibling_count_hint)
+				     int sync)
 {
 	unsigned long prev_energy = ULONG_MAX, best_energy = ULONG_MAX, energy[NR_CPUS] = {0};
 	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
@@ -7750,8 +7742,7 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 	int boosted = (schedtune_task_boost(p) > 0) || (task_boost > 0);
 	int start_cpu;
 
-	if (is_many_wakeup(sibling_count_hint) && prev_cpu != cpu &&
-			cpumask_test_cpu(prev_cpu, &p->cpus_allowed))
+	if (prev_cpu != cpu && cpumask_test_cpu(prev_cpu, &p->cpus_allowed))
 		return prev_cpu;
 
 	start_cpu = get_start_cpu(p);
@@ -7807,8 +7798,6 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 		fbt_env.boosted = boosted;
 		fbt_env.strict_max = is_rtg &&
 			(task_boost == TASK_BOOST_STRICT_MAX);
-		fbt_env.skip_cpu = is_many_wakeup(sibling_count_hint) ?
-				   cpu : -1;
 
 		find_best_target(NULL, candidates, p, &fbt_env);
 	} else {
@@ -7912,7 +7901,7 @@ fail:
 eas_not_ready:
 	return -1;
 }
-
+#ifndef CONFIG_SCHED_CASS
 /*
  * select_task_rq_fair: Select target runqueue for the waking task in domains
  * that have the 'sd_flag' flag set. In practice, this is SD_BALANCE_WAKE,
@@ -7926,8 +7915,7 @@ eas_not_ready:
  * preempt must be disabled.
  */
 static int
-select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_flags,
-		    int sibling_count_hint)
+select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_flags)
 {
 	struct sched_domain *tmp, *sd = NULL;
 	int cpu = smp_processor_id();
@@ -7938,7 +7926,7 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 	if (static_branch_unlikely(&sched_energy_present)) {
 		rcu_read_lock();
 		new_cpu = find_energy_efficient_cpu(p, prev_cpu, sync,
-						    sibling_count_hint);
+						    1);
 		if (unlikely(new_cpu < 0))
 			new_cpu = prev_cpu;
 		rcu_read_unlock();
@@ -7955,7 +7943,7 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 			new_cpu = prev_cpu;
 		}
 
-		want_affine = !wake_wide(p, sibling_count_hint) &&
+		want_affine = !wake_wide(p) &&
 			      !wake_cap(p, cpu, prev_cpu) &&
 			      cpumask_test_cpu(cpu, &p->cpus_allowed);
 	}
@@ -8000,7 +7988,7 @@ sd_loop:
 
 	return new_cpu;
 }
-
+#endif
 /*
  * Called immediately before a task is migrated to a new CPU; task_cpu(p) and
  * cfs_rq_of(p) references at time of call are still valid and identify the
@@ -12659,13 +12647,6 @@ static unsigned int get_rr_interval_fair(struct rq *rq, struct task_struct *task
 
 #ifdef CONFIG_SCHED_CASS
 #include "cass.c"
-
-/* Use CASS. A dummy wrapper ensures the replaced function is still "used". */
-static inline void *select_task_rq_fair_dummy(void)
-{
-	return (void *)select_task_rq_fair;
-}
-#define select_task_rq_fair cass_select_task_rq_fair
 #endif /* CONFIG_SCHED_CASS */
 
 /*
@@ -12684,7 +12665,11 @@ const struct sched_class fair_sched_class = {
 	.put_prev_task		= put_prev_task_fair,
 
 #ifdef CONFIG_SMP
+#ifdef CONFIG_SCHED_CASS
+	.select_task_rq     = cass_select_task_rq_fair,
+#else
 	.select_task_rq		= select_task_rq_fair,
+#endif
 	.migrate_task_rq	= migrate_task_rq_fair,
 
 	.rq_online		= rq_online_fair,
