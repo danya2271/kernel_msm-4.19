@@ -2,7 +2,7 @@
 #
 # Makefile for the linux memory manager.
 #
-
+KBUILD_CFLAGS  += -mllvm -inline-instr-cost=28
 KASAN_SANITIZE_slab_common.o := n
 KASAN_SANITIZE_slab.o := n
 KASAN_SANITIZE_slub.o := n
