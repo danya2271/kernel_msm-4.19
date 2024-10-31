@@ -791,6 +791,8 @@ KBUILD_CFLAGS += $(stackp-flags-y)
 
 ifeq ($(cc-name),clang)
 # Inlining optimization
+KBUILD_CFLAGS	+= -mllvm -inline-threshold=4000
+KBUILD_CFLAGS	+= -mllvm -inlinehint-threshold=2511
 KBUILD_CFLAGS  += -mllvm -inline-savings-multiplier=12
 KBUILD_CFLAGS  += -mllvm -inline-cold-callsite-threshold=55
 KBUILD_CFLAGS  += -mllvm -ignore-tti-inline-compatible
