@@ -2,7 +2,11 @@
 #
 # Makefile for the kernel multimedia device drivers.
 #
-
+# Inlining optimization
+KBUILD_CFLAGS  += -mllvm -inline-threshold=225
+KBUILD_CFLAGS  += -mllvm -inlinehint-threshold=325
+KBUILD_CFLAGS  += -mllvm -inline-instr-cost=60
+KBUILD_CFLAGS  += -Oz
 media-objs	:= media-device.o media-devnode.o media-entity.o
 
 #

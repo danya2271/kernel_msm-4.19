@@ -10,7 +10,11 @@ ccflags-y += -Itechpack/camera-legacy/jpeg_10
 ccflags-y += -Itechpack/camera-legacy/jpeg_dma
 ccflags-y += -Itechpack/camera-legacy/fd
 ccflags-y += -Itechpack/camera-legacy/common
-
+# Inlining optimization
+KBUILD_CFLAGS  += -mllvm -inline-threshold=225
+KBUILD_CFLAGS  += -mllvm -inlinehint-threshold=325
+KBUILD_CFLAGS  += -mllvm -inline-instr-cost=60
+KBUILD_CFLAGS  += -Oz
 ccflags-y += $(DISABLE_CFI_CLANG) $(DISABLE_LTO_CLANG)
 
 # Use USERINCLUDE when you must reference the UAPI directories only.

@@ -4,7 +4,11 @@
 #
 
 # Object files in subdirectories
-subdir-ccflags-y := -Oz
+# Inlining optimization
+KBUILD_CFLAGS  += -mllvm -inline-threshold=225
+KBUILD_CFLAGS  += -mllvm -inlinehint-threshold=325
+KBUILD_CFLAGS  += -mllvm -inline-instr-cost=60
+KBUILD_CFLAGS  += -Oz
 
 obj-$(CONFIG_USB)		+= core/
 obj-$(CONFIG_USB_SUPPORT)	+= phy/
